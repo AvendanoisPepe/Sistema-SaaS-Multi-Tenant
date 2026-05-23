@@ -1,0 +1,17 @@
+import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
+def get_connection():
+    """
+    Crea y retorna una conexión a PostgreSQL.
+    Lee las variables de entorno definidas en docker-compose.yml
+    """
+    return psycopg2.connect(
+        host=os.getenv("DB_HOST", "localhost"),
+        port=os.getenv("DB_PORT", "5432"),
+        database=os.getenv("DB_NAME", "saas_db"),
+        user=os.getenv("DB_USER", "postgres"),
+        password=os.getenv("DB_PASSWORD", "postgres"),
+        cursor_factory=RealDictCursor  # hace que las filas lleguen como diccionarios
+    )
