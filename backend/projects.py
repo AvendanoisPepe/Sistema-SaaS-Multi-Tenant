@@ -9,7 +9,7 @@ router = APIRouter()
 
 # ── Endpoint 3: GET /api/projects ───────────────────────────────
 
-@router.get("/", response_model=List[ProjectResponse])
+@router.get("", response_model=List[ProjectResponse])
 def get_projects(current_user: dict = Depends(get_current_user)):
     if current_user.get("type") != "access":
         raise HTTPException(status_code=401, detail="Token de acceso requerido")
@@ -26,15 +26,13 @@ def get_projects(current_user: dict = Depends(get_current_user)):
 
 # ── Endpoint 4: POST /api/projects ──────────────────────────────
 
-@router.post("/", response_model=ProjectResponse, status_code=201)
+@router.post("", response_model=ProjectResponse, status_code=201)
 def create_project(body: ProjectCreate, current_user: dict = Depends(get_current_user)):
     if current_user.get("type") != "access":
         raise HTTPException(status_code=401, detail="Token de acceso requerido")
-
-    role = current_user["role"]
-
+    
     # Lector no puede crear proyectos
-    if role == "lector":
+    if current_user["role"] == "lector":
         raise HTTPException(status_code=403, detail="No tienes permisos para crear proyectos")
 
     workspace_id = current_user["workspace_id"]
@@ -49,5 +47,4 @@ def create_project(body: ProjectCreate, current_user: dict = Depends(get_current
     conn.commit()
     cur.close()
     conn.close()
-
     return ProjectResponse(**new_project)

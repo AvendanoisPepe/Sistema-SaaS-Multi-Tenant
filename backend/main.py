@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import auth
 import projects
 
-app = FastAPI(title="SaaS Multi-Tenant API")
+app = FastAPI(title="SaaS Multi-Tenant API", redirect_slashes=False)
 
 # CORS: permite que el frontend (React) pueda llamar al backend
 app.add_middleware(

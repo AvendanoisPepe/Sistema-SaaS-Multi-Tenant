@@ -1,6 +1,5 @@
 import os
 from datetime import datetime, timedelta
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -61,8 +60,8 @@ def login(body: LoginRequest):
     cur.close()
     conn.close()
 
-    # Token temporal: solo identifica al usuario, sin workspace aún
-    temp_token = create_token({"sub": user["id"], "type": "temp"}, expires_minutes=10)
+    # Convertimos el id a string para evitar problemas de serialización en JWT
+    temp_token = create_token({"sub": str(user["id"]), "type": "temp"}, expires_minutes=10)
 
     return LoginResponse(
         user_id=user["id"],
