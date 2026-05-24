@@ -48,3 +48,35 @@ def create_project(body: ProjectCreate, current_user: dict = Depends(get_current
     cur.close()
     conn.close()
     return ProjectResponse(**new_project)
+
+# ── Endpoint 5: DELETE /api/projects/{project_id} ───────────────────────
+
+@router.delete("/{project_id}", status_code=200)
+def delete_project(project_id: int, current_user: dict = Depends(get_current_user)):
+    if current_user.get("type") != "access":
+        raise HTTPException(status_code=401, detail="Token de acceso requerido")
+    
+    # unicamente el admin puede eliminar cosas
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Solo un administrador puede eliminar proyectos")
+    
+    workspace_id = current_user["workspace_id"]
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # Comprobamos que el proyecto exista y este en el workspace del user
+
+    cur.execute("SELECT id FROM projects WHERE id = %s AND workspace_id = %s", (project_id, workspace_id))
+    project = cur.fetchone()
+
+    if not project:
+        cur.close()
+        conn.close()
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    cur.execute("DELETE FROM projects WHERE id = %s", (project_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return {"message": "Proyecto eliminado correctamente"}

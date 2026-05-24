@@ -1,89 +1,119 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { getProjects, createProject } from '../api'
-import { 
-  LayoutGrid, 
-  Plus, 
-  FolderOpen, 
-  LogOut, 
-  RefreshCw, 
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { getProjects, createProject, deleteProject } from "../api";
+import {
+  LayoutGrid,
+  Plus,
+  FolderOpen,
+  LogOut,
+  RefreshCw,
   Loader2,
   X,
   FileText,
-  AlertCircle
-} from 'lucide-react'
+  Trash,
+  AlertCircle,
+} from "lucide-react";
 
-const roleLabels = { admin: 'Admin', editor: 'Editor', lector: 'Lector' }
+const roleLabels = { admin: "Admin", editor: "Editor", lector: "Lector" };
 
 const roleColors = {
-  admin: 'bg-[#053c46] text-white',
-  editor: 'bg-[#149bb4] text-white',
-  lector: 'bg-[#14788c]/20 text-[#14788c]'
-}
+  admin: "bg-[#053c46] text-white",
+  editor: "bg-[#149bb4] text-white",
+  lector: "bg-[#14788c]/20 text-[#14788c]",
+};
 
 export default function Dashboard() {
-  const [projects, setProjects]     = useState([])
-  const [workspace, setWorkspace]   = useState(null)
-  const [user, setUser]             = useState(null)
-  const [loading, setLoading]       = useState(true)
-  const [showModal, setShowModal]   = useState(false)
-  const [newName, setNewName]       = useState('')
-  const [newDesc, setNewDesc]       = useState('')
-  const [creating, setCreating]     = useState(false)
-  const [error, setError]           = useState('')
-  const navigate = useNavigate()
+  const [projects, setProjects] = useState([]);
+  const [workspace, setWorkspace] = useState(null);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [creating, setCreating] = useState(false);
 
-  const canCreate = workspace?.role === 'admin' || workspace?.role === 'editor'
+  const [deletingId, setDeletingId] = useState(null)
+  const [confirmId, setConfirmId] = useState(null); // id del proyecto a confirmar
+  const [deleteSuccess, setDeleteSuccess] = useState(false); // muestra mensaje de éxito
+  
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+
+  const canCreate = workspace?.role === "admin" || workspace?.role === "editor";
+  const canDelete = workspace?.role === "admin";
 
   useEffect(() => {
-    const ws    = sessionStorage.getItem('workspace')
-    const usr   = sessionStorage.getItem('user')
-    const token = sessionStorage.getItem('access_token')
-    if (!ws || !token) { navigate('/'); return }
-    setWorkspace(JSON.parse(ws))
-    setUser(JSON.parse(usr))
-    loadProjects(token)
-  }, [])
+    const ws = sessionStorage.getItem("workspace");
+    const usr = sessionStorage.getItem("user");
+    const token = sessionStorage.getItem("access_token");
+    if (!ws || !token) {
+      navigate("/");
+      return;
+    }
+    setWorkspace(JSON.parse(ws));
+    setUser(JSON.parse(usr));
+    loadProjects(token);
+  }, []);
 
   async function loadProjects(token) {
     try {
-      const data = await getProjects(token || sessionStorage.getItem('access_token'))
-      setProjects(data)
+      const data = await getProjects(
+        token || sessionStorage.getItem("access_token"),
+      );
+      setProjects(data);
     } catch {
-      setError('Error al cargar proyectos')
+      setError("Error al cargar proyectos");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   async function handleCreate(e) {
-    e.preventDefault()
-    if (!newName.trim()) return
-    setCreating(true)
+    e.preventDefault();
+    if (!newName.trim()) return;
+    setCreating(true);
     try {
-      const token = sessionStorage.getItem('access_token')
-      const project = await createProject(newName, newDesc, token)
-      setProjects(prev => [project, ...prev])
-      setNewName(''); setNewDesc(''); setShowModal(false)
+      const token = sessionStorage.getItem("access_token");
+      const project = await createProject(newName, newDesc, token);
+      setProjects((prev) => [project, ...prev]);
+      setNewName("");
+      setNewDesc("");
+      setShowModal(false);
     } catch (err) {
-      setError(err.message)
+      setError(err.message);
     } finally {
-      setCreating(false)
+      setCreating(false);
     }
   }
 
   function handleLogout() {
-    sessionStorage.clear()
-    navigate('/')
+    sessionStorage.clear();
+    navigate("/");
   }
 
   const projectColors = [
-    'bg-[#149bb4]',
-    'bg-[#14788c]',
-    'bg-[#053c46]',
-    'bg-[#1ab4c7]',
-    'bg-[#0d5c6e]'
-  ]
+    "bg-[#149bb4]",
+    "bg-[#14788c]",
+    "bg-[#053c46]",
+    "bg-[#1ab4c7]",
+    "bg-[#0d5c6e]",
+  ];
+
+  async function handleDelete() {
+    setDeletingId(confirmId);
+    setConfirmId(null);
+    try {
+      const token = sessionStorage.getItem("access_token");
+      await deleteProject(confirmId, token);
+      setProjects((prev) => prev.filter((p) => p.id !== confirmId));
+      setDeleteSuccess(true);
+      setTimeout(() => setDeleteSuccess(false), 3000); // desaparece a los 3 segundos
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#f7f9fb]">
@@ -92,19 +122,27 @@ export default function Dashboard() {
           <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#149bb4] to-[#053c46] flex items-center justify-center shadow-md">
             <LayoutGrid className="w-4 h-4 text-white" />
           </div>
-          <span className="font-bold text-[#053c46] text-lg tracking-tight">Sistema SaaS Multi-Tenant</span>
+          <span className="font-bold text-[#053c46] text-lg tracking-tight">
+            Sistema SaaS Multi-Tenant
+          </span>
         </div>
 
         <div className="flex items-center gap-2 md:gap-4">
-          <span className="text-sm text-[#14788c] hidden sm:block">{user?.name}</span>
-          <button 
-            onClick={() => { sessionStorage.removeItem('access_token'); sessionStorage.removeItem('workspace'); navigate('/workspaces') }}
+          <span className="text-sm text-[#14788c] hidden sm:block">
+            {user?.name}
+          </span>
+          <button
+            onClick={() => {
+              sessionStorage.removeItem("access_token");
+              sessionStorage.removeItem("workspace");
+              navigate("/workspaces");
+            }}
             className="flex items-center gap-2 bg-[#f7f9fb] border border-[#149bb4]/20 text-[#14788c] px-3 py-2 rounded-lg text-sm font-medium hover:bg-[#149bb4]/10 hover:border-[#149bb4]/30 transition-all duration-200"
           >
             <RefreshCw className="w-4 h-4" />
             <span className="hidden sm:inline">Cambiar workspace</span>
           </button>
-          <button 
+          <button
             onClick={handleLogout}
             className="flex items-center gap-2 text-[#14788c] hover:text-[#053c46] px-2 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
           >
@@ -123,7 +161,9 @@ export default function Dashboard() {
             <h1 className="text-2xl md:text-3xl font-bold text-[#053c46] tracking-tight mb-2">
               {workspace?.name}
             </h1>
-            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${roleColors[workspace?.role] || 'bg-gray-100 text-gray-600'}`}>
+            <span
+              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${roleColors[workspace?.role] || "bg-gray-100 text-gray-600"}`}
+            >
               {roleLabels[workspace?.role]}
             </span>
           </div>
@@ -148,9 +188,13 @@ export default function Dashboard() {
             <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[#149bb4]/10 flex items-center justify-center">
               <FolderOpen className="w-8 h-8 text-[#149bb4]" />
             </div>
-            <p className="font-semibold text-[#053c46] mb-1">Sin proyectos aun</p>
+            <p className="font-semibold text-[#053c46] mb-1">
+              Sin proyectos aun
+            </p>
             <p className="text-sm text-[#14788c]">
-              {canCreate ? 'Crea el primero con el boton de arriba.' : 'No hay proyectos en este workspace.'}
+              {canCreate
+                ? "Crea el primero con el boton de arriba."
+                : "No hay proyectos en este workspace."}
             </p>
           </div>
         ) : (
@@ -161,14 +205,29 @@ export default function Dashboard() {
                 className="group bg-white border border-[#149bb4]/10 rounded-xl p-5 shadow-sm hover:shadow-lg hover:shadow-[#149bb4]/10 hover:border-[#149bb4]/30 transition-all duration-300 cursor-pointer"
                 style={{ animationDelay: `${i * 0.07}s` }}
               >
-                <div className={`w-10 h-10 rounded-lg ${projectColors[i % projectColors.length]} mb-4 flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-200`}>
-                  <FolderOpen className="w-5 h-5 text-white" />
+                <div className="flex items-center justify-between mb-4">
+                  <div
+                    className={`w-10 h-10 rounded-lg ${projectColors[i % projectColors.length]} flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-200`}
+                  >
+                    <FolderOpen className="w-5 h-5 text-white" />
+                  </div>
+
+                  {canDelete && (
+                    <button
+                      onClick={() => setConfirmId(p.id)}
+                      disabled={deletingId === p.id}
+                      className="w-7 h-7 flex items-center justify-center rounded-md border transition-all cursor-pointer bg-[rgba(255,101,132,0.1)] border-[rgba(255,101,132,0.2)] hover:bg-[rgba(255,101,132,0.25)]"
+                      title="Eliminar proyecto"
+                    >
+                      <Trash className="w-4 h-4 text-[#ff6584]" />
+                    </button>
+                  )}
                 </div>
                 <h3 className="font-bold text-[#053c46] mb-1 group-hover:text-[#149bb4] transition-colors duration-200">
                   {p.name}
                 </h3>
                 <p className="text-sm text-[#14788c] leading-relaxed line-clamp-2">
-                  {p.description || 'Sin descripcion'}
+                  {p.description || "Sin descripcion"}
                 </p>
               </div>
             ))}
@@ -192,9 +251,11 @@ export default function Dashboard() {
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#149bb4] to-[#053c46] flex items-center justify-center">
                   <FileText className="w-5 h-5 text-white" />
                 </div>
-                <h2 className="font-bold text-[#053c46] text-lg">Nuevo Proyecto</h2>
+                <h2 className="font-bold text-[#053c46] text-lg">
+                  Nuevo Proyecto
+                </h2>
               </div>
-              <button 
+              <button
                 onClick={() => setShowModal(false)}
                 className="w-8 h-8 rounded-lg bg-[#f7f9fb] flex items-center justify-center text-[#14788c] hover:bg-[#149bb4]/10 transition-colors"
               >
@@ -211,7 +272,7 @@ export default function Dashboard() {
                   type="text"
                   placeholder="Nombre del proyecto"
                   value={newName}
-                  onChange={e => setNewName(e.target.value)}
+                  onChange={(e) => setNewName(e.target.value)}
                   required
                   autoFocus
                   className="w-full px-4 py-3 rounded-xl border border-[#149bb4]/20 bg-[#f7f9fb] text-[#053c46] placeholder-[#14788c]/50 focus:outline-none focus:ring-2 focus:ring-[#149bb4]/30 focus:border-[#149bb4] transition-all duration-200"
@@ -224,22 +285,22 @@ export default function Dashboard() {
                 <textarea
                   placeholder="Describe el proyecto..."
                   value={newDesc}
-                  onChange={e => setNewDesc(e.target.value)}
+                  onChange={(e) => setNewDesc(e.target.value)}
                   rows={3}
                   className="w-full px-4 py-3 rounded-xl border border-[#149bb4]/20 bg-[#f7f9fb] text-[#053c46] placeholder-[#14788c]/50 focus:outline-none focus:ring-2 focus:ring-[#149bb4]/30 focus:border-[#149bb4] transition-all duration-200 resize-none"
                 />
               </div>
 
               <div className="flex gap-3 mt-2">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setShowModal(false)}
                   className="flex-1 px-4 py-3 rounded-xl border border-[#149bb4]/20 bg-[#f7f9fb] text-[#14788c] font-semibold hover:bg-[#149bb4]/10 transition-all duration-200"
                 >
                   Cancelar
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={creating}
                   className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-[#149bb4] to-[#14788c] text-white font-semibold shadow-lg shadow-[#149bb4]/25 hover:shadow-xl hover:shadow-[#149bb4]/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
                 >
@@ -249,7 +310,7 @@ export default function Dashboard() {
                       Creando...
                     </>
                   ) : (
-                    'Crear'
+                    "Crear"
                   )}
                 </button>
               </div>
@@ -257,6 +318,43 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+      {confirmId && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <div className="w-12 h-12 rounded-full bg-[rgba(255,101,132,0.1)] flex items-center justify-center mb-4 mx-auto">
+              <Trash className="w-6 h-6 text-[#ff6584]" />
+            </div>
+            <h2 className="font-bold text-[#053c46] text-center text-lg mb-1">
+              ¿Eliminar proyecto?
+            </h2>
+            <p className="text-sm text-[#14788c] text-center mb-6">
+              Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmId(null)}
+                className="flex-1 py-2.5 rounded-xl border border-[#149bb4]/20 text-[#053c46] font-semibold text-sm hover:bg-[#149bb4]/5 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 py-2.5 rounded-xl bg-[#ff6584] text-white font-semibold text-sm hover:bg-[#ff4d6d] transition-all"
+              >
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {deleteSuccess && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-60 bg-[#053c46] text-white px-6 py-3 rounded-xl flex items-center gap-2 shadow-2xl">
+          <Trash className="w-6 h-6 text-[#ff6584]" />
+          <span className="text-sm font-semibold">
+            Proyecto eliminado correctamente
+          </span>
+        </div>
+      )}
     </div>
-  )
+  );
 }

@@ -48,3 +48,13 @@ export async function createProject(name, description, accessToken) {
   if (!res.ok) throw new Error('No tienes permisos para crear proyectos')
   return res.json()
 }
+
+// Paso 5: Eliminar proyecto
+export async function deleteProject(projectId, accessToken) {
+  const res = await fetch (`${BASE}/api/projects/${projectId}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  })
+  if (!res.ok) throw new Error('No tienes permisos para eliminar este proyecto')
+  return res.json()
+}
